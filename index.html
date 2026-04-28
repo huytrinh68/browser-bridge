@@ -75,6 +75,8 @@
         const manualLinkEl = document.getElementById('manualLink');
         const searchParams = new URLSearchParams(window.location.search);
         const targetUrl = searchParams.get('url') || searchParams.get('targetUrl') || searchParams.get('target');
+        const preferredBrowser = (searchParams.get('browser') || 'auto').toLowerCase();
+        const attempt = Math.max(Number.parseInt(searchParams.get('_attempt') || '0', 10) || 0, 0);
         const userAgent = navigator.userAgent || '';
         const isAndroid = /Android/i.test(userAgent);
         const isIOS = /iPhone|iPad|iPod/i.test(userAgent);
@@ -151,10 +153,10 @@
         });
 
         function showFallback(message, linkHref, linkText = 'nhấn vào đây') {
-            // statusEl.textContent = message;
+            statusEl.textContent = message;
             manualLinkEl.href = linkHref;
-            // manualLinkEl.textContent = linkText;
-            // fallbackEl.style.display = 'block';
+            manualLinkEl.textContent = linkText;
+            fallbackEl.style.display = 'block';
         }
 
         function redirectToTarget() {
@@ -163,15 +165,84 @@
             }
         }
 
-        function openChromeOnIOS(chromeUrl) {
+        function getIOSCandidates(url) {
+            const candidates = [
+                {
+                    key: 'chrome',
+                    name: 'Chrome',
+                    openUrl: url.replace(/^https:\/\//i, 'googlechromes://').replace(/^http:\/\//i, 'googlechrome://'),
+                },
+                {
+                    key: 'firefox',
+                    name: 'Firefox',
+                    openUrl: `firefox://open-url?url=${encodeURIComponent(url)}`,
+                },
+                {
+                    key: 'opera',
+                    name: 'Opera',
+                    openUrl: url.replace(/^https:\/\//i, 'opera-https://').replace(/^http:\/\//i, 'opera-http://'),
+                },
+            ];
+
+            if (preferredBrowser === 'auto') {
+                return candidates;
+            }
+
+            return candidates.filter((candidate) => candidate.key === preferredBrowser);
+        }
+
+        function getAndroidCandidates() {
+            const candidates = [
+                { key: 'chrome', name: 'Chrome', packageName: 'com.android.chrome' },
+                { key: 'firefox', name: 'Firefox', packageName: 'org.mozilla.firefox' },
+                { key: 'opera', name: 'Opera', packageName: 'com.opera.browser' },
+                { key: 'opera-mini', name: 'Opera Mini', packageName: 'com.opera.mini.native' },
+                { key: 'edge', name: 'Edge', packageName: 'com.microsoft.emmx' },
+                { key: 'samsung', name: 'Samsung Internet', packageName: 'com.sec.android.app.sbrowser' },
+                { key: 'duckduckgo', name: 'DuckDuckGo', packageName: 'com.duckduckgo.mobile.android' },
+            ];
+
+            if (preferredBrowser === 'auto') {
+                return candidates;
+            }
+
+            return candidates.filter((candidate) => candidate.key === preferredBrowser);
+        }
+
+        function buildRetryUrl(nextAttempt) {
+            const retryParams = new URLSearchParams(window.location.search);
+            retryParams.set('_attempt', String(nextAttempt));
+            return `${window.location.origin}${window.location.pathname}?${retryParams.toString()}`;
+        }
+
+        function buildAndroidIntentUrl(parsedUrl, browserPackage, fallbackUrl) {
+            return `intent://${parsedUrl.host}${parsedUrl.pathname}${parsedUrl.search}#Intent;scheme=${parsedUrl.protocol.replace(':', '')};package=${browserPackage};S.browser_fallback_url=${encodeURIComponent(fallbackUrl)};end`;
+        }
+
+        function openUrlWithHiddenFrame(url) {
             const iframe = document.createElement('iframe');
             iframe.style.display = 'none';
-            iframe.src = chromeUrl;
+            iframe.src = url;
             document.body.appendChild(iframe);
 
             setTimeout(() => {
                 iframe.remove();
             }, 1000);
+        }
+
+        function continueToNextAttempt(nextAttempt, candidates) {
+            if (pageWasHidden) {
+                return;
+            }
+
+            if (nextAttempt < candidates.length) {
+                window.location.replace(buildRetryUrl(nextAttempt));
+            } else {
+                showFallback('Không tìm thấy trình duyệt phù hợp trên thiết bị. Mở liên kết trực tiếp bên dưới', targetUrl);
+                setTimeout(() => {
+                    redirectToTarget();
+                }, 150);
+            }
         }
 
         if (!targetUrl) {
@@ -186,35 +257,57 @@
             }
 
             if (parsedTarget) {
-                let intentUrl;
-
                 if (!browserContext.isInApp) {
                     statusEl.textContent = `Đang mở liên kết trong ${browserContext.name}...`;
                     window.location.href = targetUrl;
                 } else if (isAndroid) {
-                    intentUrl = `intent://${parsedTarget.host}${parsedTarget.pathname}${parsedTarget.search}#Intent;scheme=${parsedTarget.protocol.replace(':', '')};package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(targetUrl)};end`;
+                    const androidCandidates = getAndroidCandidates();
+                    const currentCandidate = androidCandidates[attempt];
+
                     manualLinkEl.href = targetUrl;
-                    window.location.href = intentUrl;
+                    if (!currentCandidate) {
+                        showFallback('Không còn browser nào để thử. Mở liên kết trực tiếp bên dưới', targetUrl);
+                        setTimeout(() => {
+                            redirectToTarget();
+                        }, 150);
+                    } else {
+                        const nextAttempt = attempt + 1;
+                        const fallbackUrl = nextAttempt < androidCandidates.length
+                            ? buildRetryUrl(nextAttempt)
+                            : targetUrl;
+                        const intentUrl = buildAndroidIntentUrl(parsedTarget, currentCandidate.packageName, fallbackUrl);
 
-                    setTimeout(() => {
-                        showFallback(`Nếu ${browserContext.name} chưa mở trình duyệt ngoài, hãy dùng liên kết bên dưới`, targetUrl);
-                    }, 3000);
+                        statusEl.textContent = `Đang thử mở bằng ${currentCandidate.name}...`;
+                        window.location.href = intentUrl;
 
-                    setTimeout(() => {
-                        redirectToTarget();
-                    }, 5000);
+                        setTimeout(() => {
+                            if (!pageWasHidden && document.visibilityState === 'visible') {
+                                continueToNextAttempt(nextAttempt, androidCandidates);
+                            }
+                        }, 1200);
+                    }
                 } else if (isIOS) {
-                    intentUrl = targetUrl.replace(/^https:\/\//i, 'googlechromes://').replace(/^http:\/\//i, 'googlechrome://');
+                    const iosCandidates = getIOSCandidates(targetUrl);
+                    const currentCandidate = iosCandidates[attempt];
+
                     manualLinkEl.href = targetUrl;
-                    openChromeOnIOS(intentUrl);
+                    if (!currentCandidate) {
+                        showFallback('Không còn browser nào để thử. Mở liên kết trực tiếp bên dưới', targetUrl);
+                        setTimeout(() => {
+                            redirectToTarget();
+                        }, 150);
+                    } else {
+                        const nextAttempt = attempt + 1;
 
-                    setTimeout(() => {
-                        showFallback(`Nếu ${browserContext.name} không chuyển được sang trình duyệt ngoài, hãy mở liên kết trực tiếp bên dưới`, targetUrl);
-                    }, 1200);
+                        statusEl.textContent = `Đang thử mở bằng ${currentCandidate.name}...`;
+                        openUrlWithHiddenFrame(currentCandidate.openUrl);
 
-                    setTimeout(() => {
-                        redirectToTarget();
-                    }, 1600);
+                        setTimeout(() => {
+                            if (!pageWasHidden && document.visibilityState === 'visible') {
+                                continueToNextAttempt(nextAttempt, iosCandidates);
+                            }
+                        }, 900);
+                    }
                 } else {
                     window.location.href = targetUrl;
                 }
