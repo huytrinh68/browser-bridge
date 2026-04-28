@@ -91,13 +91,15 @@
 
             if (parsedTarget) {
                 let intentUrl;
+                let chromeUrl;
+                let safariUrl;
 
                 if (isAndroid) {
                     // Android Intent URL for Chrome
                     intentUrl = `intent://${parsedTarget.host}${parsedTarget.pathname}${parsedTarget.search}#Intent;scheme=${parsedTarget.protocol.replace(':', '')};package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(targetUrl)};end`;
                 } else if (isIOS) {
-                    // iOS Safari scheme
-                    intentUrl = targetUrl.replace(/^https:\/\//i, 'x-safari-https://').replace(/^http:\/\//i, 'x-safari-http://');
+                    chromeUrl = targetUrl.replace(/^https:\/\//i, 'googlechromes://').replace(/^http:\/\//i, 'googlechrome://');
+                    safariUrl = targetUrl.replace(/^https:\/\//i, 'x-safari-https://').replace(/^http:\/\//i, 'x-safari-http://');
                 } else {
                     // Desktop - direct redirect
                     intentUrl = targetUrl;
@@ -107,7 +109,17 @@
                 manualLinkEl.href = targetUrl;
 
                 // Immediate redirect
-                window.location.href = intentUrl;
+                if (isIOS) {
+                    window.location.href = chromeUrl;
+
+                    setTimeout(() => {
+                        if (document.visibilityState === 'visible') {
+                            window.location.href = safariUrl;
+                        }
+                    }, 800);
+                } else {
+                    window.location.href = intentUrl;
+                }
 
                 // Show fallback after 3 seconds
                 setTimeout(() => {
