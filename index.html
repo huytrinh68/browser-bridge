@@ -156,55 +156,54 @@
                             window.location.href = targetUrl;
                         }
                     }, 5000);
-
-                    return;
                 } else {
                     // Desktop - direct redirect
                     candidates = [{ name: 'Trình duyệt mặc định', openUrl: targetUrl }];
                 }
 
-                const currentCandidate = candidates[attempt];
-                const nextAttempt = attempt + 1;
+                if (!isIOS) {
+                    const currentCandidate = candidates[attempt];
+                    const nextAttempt = attempt + 1;
 
-                if (!currentCandidate) {
-                    showFallback('Không còn trình duyệt nào để thử. Mở liên kết trực tiếp bên dưới', targetUrl);
-                    setTimeout(() => {
-                        if (document.visibilityState === 'visible') {
-                            window.location.href = targetUrl;
+                    if (!currentCandidate) {
+                        showFallback('Không còn trình duyệt nào để thử. Mở liên kết trực tiếp bên dưới', targetUrl);
+                        setTimeout(() => {
+                            if (document.visibilityState === 'visible') {
+                                window.location.href = targetUrl;
+                            }
+                        }, 300);
+                    } else {
+                        manualLinkEl.href = targetUrl;
+
+                        if (attempt > 0) {
+                            statusEl.textContent = `Đang thử mở bằng ${currentCandidate.name}...`;
                         }
-                    }, 300);
-                    return;
-                }
 
-                manualLinkEl.href = targetUrl;
+                        window.location.href = currentCandidate.openUrl;
 
-                if (attempt > 0) {
-                    statusEl.textContent = `Đang thử mở bằng ${currentCandidate.name}...`;
-                }
-
-                window.location.href = currentCandidate.openUrl;
-
-                setTimeout(() => {
-                    if (document.visibilityState === 'visible') {
-                        if (nextAttempt < candidates.length) {
-                            window.location.replace(buildRetryUrl(nextAttempt));
-                        } else {
-                            showFallback('Không mở được các trình duyệt đã thử. Mở liên kết trực tiếp bên dưới', targetUrl);
-                            setTimeout(() => {
-                                if (document.visibilityState === 'visible') {
-                                    window.location.href = targetUrl;
+                        setTimeout(() => {
+                            if (document.visibilityState === 'visible') {
+                                if (nextAttempt < candidates.length) {
+                                    window.location.replace(buildRetryUrl(nextAttempt));
+                                } else {
+                                    showFallback('Không mở được các trình duyệt đã thử. Mở liên kết trực tiếp bên dưới', targetUrl);
+                                    setTimeout(() => {
+                                        if (document.visibilityState === 'visible') {
+                                            window.location.href = targetUrl;
+                                        }
+                                    }, 300);
                                 }
-                            }, 300);
-                        }
-                    }
-                }, isIOS ? 900 : 1200);
+                            }
+                        }, 1200);
 
-                setTimeout(() => {
-                    if (document.visibilityState === 'visible') {
-                        const nextBrowserName = candidates[nextAttempt] ? candidates[nextAttempt].name : 'liên kết trực tiếp';
-                        showFallback(`Nếu chưa mở được, hệ thống sẽ thử ${nextBrowserName}`, targetUrl);
+                        setTimeout(() => {
+                            if (document.visibilityState === 'visible') {
+                                const nextBrowserName = candidates[nextAttempt] ? candidates[nextAttempt].name : 'liên kết trực tiếp';
+                                showFallback(`Nếu chưa mở được, hệ thống sẽ thử ${nextBrowserName}`, targetUrl);
+                            }
+                        }, 700);
                     }
-                }, isIOS ? 400 : 700);
+                }
             }
         }
     </script>
