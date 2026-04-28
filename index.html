@@ -89,17 +89,6 @@
             pageWasHidden = true;
         });
 
-        function tryAppScheme(url) {
-            const iframe = document.createElement('iframe');
-            iframe.style.display = 'none';
-            iframe.src = url;
-            document.body.appendChild(iframe);
-
-            setTimeout(() => {
-                iframe.remove();
-            }, 1000);
-        }
-
         if (!targetUrl) {
             manualLinkEl.href = '#';
         } else {
@@ -132,13 +121,13 @@
 
                 // Immediate redirect
                 if (isIOS) {
-                    tryAppScheme(chromeUrl);
+                    window.location.href = chromeUrl;
 
                     setTimeout(() => {
                         if (!pageWasHidden && document.visibilityState === 'visible') {
                             window.location.href = safariUrl;
                         }
-                    }, 800);
+                    }, 3000);
                 } else {
                     window.location.href = intentUrl;
                 }
