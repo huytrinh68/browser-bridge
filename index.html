@@ -77,6 +77,28 @@
         const targetUrl = searchParams.get('url') || searchParams.get('targetUrl') || searchParams.get('target');
         const isAndroid = /Android/i.test(navigator.userAgent);
         const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        let pageWasHidden = false;
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                pageWasHidden = true;
+            }
+        });
+
+        window.addEventListener('pagehide', () => {
+            pageWasHidden = true;
+        });
+
+        function tryAppScheme(url) {
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = url;
+            document.body.appendChild(iframe);
+
+            setTimeout(() => {
+                iframe.remove();
+            }, 1000);
+        }
 
         if (!targetUrl) {
             manualLinkEl.href = '#';
@@ -110,10 +132,10 @@
 
                 // Immediate redirect
                 if (isIOS) {
-                    window.location.href = chromeUrl;
+                    tryAppScheme(chromeUrl);
 
                     setTimeout(() => {
-                        if (document.visibilityState === 'visible') {
+                        if (!pageWasHidden && document.visibilityState === 'visible') {
                             window.location.href = safariUrl;
                         }
                     }, 800);
@@ -123,13 +145,17 @@
 
                 // Show fallback after 3 seconds
                 setTimeout(() => {
-                    statusEl.textContent = 'Đang chờ xác nhận...';
-                    fallbackEl.style.display = 'block';
+                    if (!pageWasHidden && document.visibilityState === 'visible') {
+                        statusEl.textContent = isIOS
+                            ? 'Nếu chưa mở được Chrome hoặc Safari, hãy dùng liên kết bên dưới'
+                            : 'Đang chờ xác nhận...';
+                        fallbackEl.style.display = 'block';
+                    }
                 }, 3000);
 
                 // Fallback to direct URL after 5 seconds if still on page
                 setTimeout(() => {
-                    if (document.visibilityState === 'visible') {
+                    if (!pageWasHidden && document.visibilityState === 'visible') {
                         window.location.href = targetUrl;
                     }
                 }, 5000);
