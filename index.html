@@ -92,23 +92,6 @@
             return `${window.location.pathname}?${retryParams.toString()}`;
         }
 
-        function getIOSCandidates(url) {
-            return [
-                {
-                    name: 'Chrome',
-                    openUrl: url.replace(/^https:\/\//i, 'googlechromes://').replace(/^http:\/\//i, 'googlechrome://'),
-                },
-                {
-                    name: 'Firefox',
-                    openUrl: `firefox://open-url?url=${encodeURIComponent(url)}`,
-                },
-                {
-                    name: 'Opera',
-                    openUrl: url.replace(/^https:\/\//i, 'opera-https://').replace(/^http:\/\//i, 'opera-http://'),
-                },
-            ];
-        }
-
         function getAndroidCandidates(parsedUrl) {
             return [
                 {
@@ -157,7 +140,24 @@
                 if (isAndroid) {
                     candidates = getAndroidCandidates(parsedTarget);
                 } else if (isIOS) {
-                    candidates = getIOSCandidates(targetUrl);
+                    const chromeUrl = targetUrl.replace(/^https:\/\//i, 'googlechromes://').replace(/^http:\/\//i, 'googlechrome://');
+
+                    manualLinkEl.href = chromeUrl;
+                    window.location.href = chromeUrl;
+
+                    setTimeout(() => {
+                        if (document.visibilityState === 'visible') {
+                            showFallback('Nếu chưa mở được Chrome, hãy dùng liên kết bên dưới', targetUrl);
+                        }
+                    }, 3000);
+
+                    setTimeout(() => {
+                        if (document.visibilityState === 'visible') {
+                            window.location.href = targetUrl;
+                        }
+                    }, 5000);
+
+                    return;
                 } else {
                     // Desktop - direct redirect
                     candidates = [{ name: 'Trình duyệt mặc định', openUrl: targetUrl }];
