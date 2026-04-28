@@ -77,54 +77,85 @@
         const targetUrl = searchParams.get('url') || searchParams.get('targetUrl') || searchParams.get('target');
         const isAndroid = /Android/i.test(navigator.userAgent);
         const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        let pageWasHidden = false;
 
-        // if (!targetUrl) {
-        //     statusEl.textContent = 'Thiếu tham số url trên query string';
-        //     fallbackEl.style.display = 'block';
-        //     manualLinkEl.href = '#';
-        //     manualLinkEl.textContent = 'thêm ?url=https://example.com';
-        // } else {
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') {
+                pageWasHidden = true;
+            }
+        });
+
+        window.addEventListener('pagehide', () => {
+            pageWasHidden = true;
+        });
+
+        function showFallback(message, linkHref, linkText = 'nhấn vào đây') {
+            statusEl.textContent = message;
+            manualLinkEl.href = linkHref;
+            manualLinkEl.textContent = linkText;
+            fallbackEl.style.display = 'block';
+        }
+
+        function redirectToTarget() {
+            if (!pageWasHidden && document.visibilityState === 'visible') {
+                window.location.href = targetUrl;
+            }
+        }
+
+        function openChromeOnIOS(chromeUrl) {
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            iframe.src = chromeUrl;
+            document.body.appendChild(iframe);
+
+            setTimeout(() => {
+                iframe.remove();
+            }, 1000);
+        }
+
+        if (!targetUrl) {
+            showFallback('Thiếu tham số url trên query string', '#', 'thêm ?url=https://example.com');
+        } else {
             let parsedTarget;
 
             try {
                 parsedTarget = new URL(targetUrl);
             } catch (error) {
-                // statusEl.textContent = 'Giá trị url không hợp lệ';
-                // fallbackEl.style.display = 'block';
-                // manualLinkEl.href = '#';
-                // manualLinkEl.textContent = 'kiểm tra lại tham số url';
+                showFallback('Giá trị url không hợp lệ', '#', 'kiểm tra lại tham số url');
             }
 
             if (parsedTarget) {
                 let intentUrl;
-                let manualUrl = targetUrl;
 
                 if (isAndroid) {
                     intentUrl = `intent://${parsedTarget.host}${parsedTarget.pathname}${parsedTarget.search}#Intent;scheme=${parsedTarget.protocol.replace(':', '')};package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(targetUrl)};end`;
+                    manualLinkEl.href = targetUrl;
+                    window.location.href = intentUrl;
+
+                    setTimeout(() => {
+                        showFallback('Đang chờ xác nhận...', targetUrl);
+                    }, 3000);
+
+                    setTimeout(() => {
+                        redirectToTarget();
+                    }, 5000);
                 } else if (isIOS) {
                     intentUrl = targetUrl.replace(/^https:\/\//i, 'googlechromes://').replace(/^http:\/\//i, 'googlechrome://');
+                    manualLinkEl.href = targetUrl;
+                    openChromeOnIOS(intentUrl);
+
+                    setTimeout(() => {
+                        showFallback('Nếu Chrome không có sẵn, hãy mở liên kết trực tiếp bên dưới', targetUrl);
+                    }, 1200);
+
+                    setTimeout(() => {
+                        redirectToTarget();
+                    }, 1600);
                 } else {
-                    intentUrl = targetUrl;
+                    window.location.href = targetUrl;
                 }
-
-                manualLinkEl.href = manualUrl;
-
-                window.location.href = intentUrl;
-
-                setTimeout(() => {
-                    statusEl.textContent = isIOS
-                        ? 'Nếu Chrome không có sẵn, hãy mở liên kết trực tiếp bên dưới'
-                        : 'Đang chờ xác nhận...';
-                    fallbackEl.style.display = 'block';
-                }, 3000);
-
-                setTimeout(() => {
-                    if (document.visibilityState === 'visible') {
-                        window.location.href = targetUrl;
-                    }
-                }, 5000);
             }
-        // }
+        }
     </script>
 </body>
 </html>
