@@ -127,6 +127,7 @@
                 const chromeUrl = targetUrl.replace(/^https:\/\//i, 'googlechromes://').replace(/^http:\/\//i, 'googlechrome://');
                 const safariUrl = targetUrl.replace(/^https:\/\//i, 'x-safari-https://').replace(/^http:\/\//i, 'x-safari-http://');
                 const androidChromeUrl = `intent://${parsedTarget.host}${parsedTarget.pathname}${parsedTarget.search}#Intent;scheme=${parsedTarget.protocol.replace(':', '')};package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(targetUrl)};end`;
+                const androidBrowserUrl = `intent://${parsedTarget.host}${parsedTarget.pathname}${parsedTarget.search}#Intent;scheme=${parsedTarget.protocol.replace(':', '')};S.browser_fallback_url=${encodeURIComponent(targetUrl)};end`;
 
                 if (isIOS) {
                     titleEl.textContent = 'Chọn trình duyệt để mở';
@@ -137,13 +138,13 @@
                     secondaryLinkEl.textContent = 'Mở bằng Safari';
                     noteEl.textContent = 'Nếu máy không có Chrome, hãy dùng nút Safari.';
                 } else if (isAndroid) {
-                    titleEl.textContent = 'Chọn cách mở liên kết';
-                    statusEl.textContent = 'Trên Android, bạn có thể mở bằng Chrome hoặc đi thẳng tới liên kết gốc.';
+                    titleEl.textContent = 'Chọn trình duyệt để mở';
+                    statusEl.textContent = 'Trên Android, bạn có thể mở bằng Chrome hoặc thử một trình duyệt khác trên thiết bị.';
                     primaryLinkEl.href = androidChromeUrl;
                     primaryLinkEl.textContent = 'Mở bằng Chrome';
-                    secondaryLinkEl.href = targetUrl;
-                    secondaryLinkEl.textContent = 'Mở liên kết trực tiếp';
-                    noteEl.textContent = 'Nếu thiết bị không có Chrome, hãy dùng liên kết trực tiếp.';
+                    secondaryLinkEl.href = androidBrowserUrl;
+                    secondaryLinkEl.textContent = 'Mở bằng trình duyệt khác';
+                    noteEl.textContent = 'Nếu Chrome không có hoặc không hoạt động, hãy thử nút trình duyệt khác.';
                 } else {
                     titleEl.textContent = 'Mở liên kết';
                     statusEl.textContent = 'Trên desktop không cần xử lý chuyển hướng đặc biệt.';
