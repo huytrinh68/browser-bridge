@@ -75,9 +75,70 @@
         const manualLinkEl = document.getElementById('manualLink');
         const searchParams = new URLSearchParams(window.location.search);
         const targetUrl = searchParams.get('url') || searchParams.get('targetUrl') || searchParams.get('target');
-        const isAndroid = /Android/i.test(navigator.userAgent);
-        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        const userAgent = navigator.userAgent || '';
+        const isAndroid = /Android/i.test(userAgent);
+        const isIOS = /iPhone|iPad|iPod/i.test(userAgent);
         let pageWasHidden = false;
+
+        function detectBrowserContext(ua) {
+            const lowerUA = ua.toLowerCase();
+            const browser = {
+                name: 'Unknown',
+                isInApp: false,
+                isChrome: /crios|chrome/i.test(ua) && !/edg|opr|samsungbrowser|duckduckgo/i.test(ua),
+                isSafari: /safari/i.test(ua) && !/crios|chrome|fxios|edgios|edga|edg|opr|opt\/|samsungbrowser/i.test(ua),
+                isFirefox: /fxios|firefox/i.test(ua),
+                isEdge: /edgios|edga|edg/i.test(ua),
+                isSamsungInternet: /samsungbrowser/i.test(ua),
+                isOpera: /opr|opt\//i.test(ua),
+                isDuckDuckGo: /duckduckgo/i.test(ua),
+            };
+
+            const inAppRules = [
+                { name: 'Messenger', test: /messenger/i },
+                { name: 'Facebook', test: /fban|fbav/i },
+                { name: 'Instagram', test: /instagram/i },
+                { name: 'Zalo', test: /zalo/i },
+                { name: 'TikTok', test: /tiktok|musical_ly|bytedancewebview/i },
+                { name: 'Telegram', test: /telegram/i },
+                { name: 'WhatsApp', test: /whatsapp/i },
+                { name: 'LINE', test: / line\//i },
+                { name: 'WeChat', test: /micromessenger/i },
+                { name: 'LinkedIn', test: /linkedinapp/i },
+                { name: 'Snapchat', test: /snapchat/i },
+            ];
+
+            for (const rule of inAppRules) {
+                if (rule.test.test(ua)) {
+                    browser.name = rule.name;
+                    browser.isInApp = true;
+                    return browser;
+                }
+            }
+
+            if (browser.isChrome) {
+                browser.name = 'Chrome';
+            } else if (browser.isSafari) {
+                browser.name = 'Safari';
+            } else if (browser.isFirefox) {
+                browser.name = 'Firefox';
+            } else if (browser.isEdge) {
+                browser.name = 'Edge';
+            } else if (browser.isSamsungInternet) {
+                browser.name = 'Samsung Internet';
+            } else if (browser.isOpera) {
+                browser.name = 'Opera';
+            } else if (browser.isDuckDuckGo) {
+                browser.name = 'DuckDuckGo';
+            } else if (lowerUA.includes('wv')) {
+                browser.name = 'Android WebView';
+                browser.isInApp = true;
+            }
+
+            return browser;
+        }
+
+        const browserContext = detectBrowserContext(userAgent);
 
         document.addEventListener('visibilitychange', () => {
             if (document.visibilityState === 'hidden') {
@@ -90,10 +151,10 @@
         });
 
         function showFallback(message, linkHref, linkText = 'nhấn vào đây') {
-            statusEl.textContent = message;
+            // statusEl.textContent = message;
             manualLinkEl.href = linkHref;
-            manualLinkEl.textContent = linkText;
-            fallbackEl.style.display = 'block';
+            // manualLinkEl.textContent = linkText;
+            // fallbackEl.style.display = 'block';
         }
 
         function redirectToTarget() {
@@ -127,13 +188,16 @@
             if (parsedTarget) {
                 let intentUrl;
 
-                if (isAndroid) {
+                if (!browserContext.isInApp) {
+                    statusEl.textContent = `Đang mở liên kết trong ${browserContext.name}...`;
+                    window.location.href = targetUrl;
+                } else if (isAndroid) {
                     intentUrl = `intent://${parsedTarget.host}${parsedTarget.pathname}${parsedTarget.search}#Intent;scheme=${parsedTarget.protocol.replace(':', '')};package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(targetUrl)};end`;
                     manualLinkEl.href = targetUrl;
                     window.location.href = intentUrl;
 
                     setTimeout(() => {
-                        showFallback('Đang chờ xác nhận...', targetUrl);
+                        showFallback(`Nếu ${browserContext.name} chưa mở trình duyệt ngoài, hãy dùng liên kết bên dưới`, targetUrl);
                     }, 3000);
 
                     setTimeout(() => {
@@ -145,7 +209,7 @@
                     openChromeOnIOS(intentUrl);
 
                     setTimeout(() => {
-                        showFallback('Nếu Chrome không có sẵn, hãy mở liên kết trực tiếp bên dưới', targetUrl);
+                        showFallback(`Nếu ${browserContext.name} không chuyển được sang trình duyệt ngoài, hãy mở liên kết trực tiếp bên dưới`, targetUrl);
                     }, 1200);
 
                     setTimeout(() => {
