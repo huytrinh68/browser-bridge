@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đang chuyển hướng...</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            text-align: center;
+            color: white;
+        }
+        .spinner {
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top: 4px solid white;
+            width: 60px;
+            height: 60px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        h1 {
+            font-size: 1.5rem;
+            margin-bottom: 10px;
+        }
+        p {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+        .fallback {
+            margin-top: 30px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+        }
+        .fallback a {
+            color: white;
+            text-decoration: underline;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="spinner"></div>
+        <h1>Đang mở trình duyệt...</h1>
+        <p id="status">Vui lòng chờ trong giây lát</p>
+        
+        <div class="fallback" id="fallback" style="display: none;">
+            <p>Nếu không tự động mở, <a href="#" id="manualLink">nhấn vào đây</a></p>
+        </div>
+    </div>
+
+    <script>
+        const targetUrl = 'https://toidoca.com/tu-ba-lao-den-tam-bao-day-song-dai-vien-quan-khu?fbclid=IwY2xjawRdaOhleHRuA2FlbQIxMQBzcnRjBmFwcF9pZAEwAAEeKIZzh-z6bTEFmt7XOlEItWB-_aSXwAHVVXjBO5vgl8tXV4hK2M6UJd3AT7Q_aem_W8sZhL6dq_fWS-xqCft1EQ';
+        
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+        
+        let intentUrl;
+        
+        if (isAndroid) {
+            // Android Intent URL for Chrome
+            intentUrl = `intent://toidoca.com/tu-ba-lao-den-tam-bao-day-song-dai-vien-quan-khu?fbclid=IwY2xjawRdaOhleHRuA2FlbQIxMQBzcnRjBmFwcF9pZAEwAAEeKIZzh-z6bTEFmt7XOlEItWB-_aSXwAHVVXjBO5vgl8tXV4hK2M6UJd3AT7Q_aem_W8sZhL6dq_fWS-xqCft1EQ#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(targetUrl)};end`;
+        } else if (isIOS) {
+            // iOS Chrome scheme
+            intentUrl = `googlechromes://toidoca.com/tu-ba-lao-den-tam-bao-day-song-dai-vien-quan-khu?fbclid=IwY2xjawRdaOhleHRuA2FlbQIxMQBzcnRjBmFwcF9pZAEwAAEeKIZzh-z6bTEFmt7XOlEItWB-_aSXwAHVVXjBO5vgl8tXV4hK2M6UJd3AT7Q_aem_W8sZhL6dq_fWS-xqCft1EQ`;
+        } else {
+            // Desktop - direct redirect
+            intentUrl = targetUrl;
+        }
+        
+        // Set manual link
+        document.getElementById('manualLink').href = intentUrl;
+        
+        // Immediate redirect
+        window.location.href = intentUrl;
+        
+        // Show fallback after 3 seconds
+        setTimeout(() => {
+            document.getElementById('status').textContent = 'Đang chờ xác nhận...';
+            document.getElementById('fallback').style.display = 'block';
+        }, 3000);
+        
+        // Fallback to direct URL after 5 seconds if still on page
+        setTimeout(() => {
+            if (document.visibilityState === 'visible') {
+                window.location.href = targetUrl;
+            }
+        }, 5000);
+    </script>
+</body>
+</html>
