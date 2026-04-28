@@ -12,7 +12,7 @@
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #FFF;
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -21,12 +21,12 @@
         }
         .container {
             text-align: center;
-            color: white;
+            color: #2f3640;
         }
         .spinner {
-            border: 4px solid rgba(255, 255, 255, 0.3);
+            border: 4px solid #e5e7eb;
             border-radius: 50%;
-            border-top: 4px solid white;
+            border-top: 4px solid #4b5563;
             width: 60px;
             height: 60px;
             animation: spin 1s linear infinite;
@@ -42,17 +42,17 @@
         }
         p {
             font-size: 1rem;
-            opacity: 0.9;
+            color: #5b6470;
         }
         .fallback {
             margin-top: 30px;
             padding: 20px;
-            background: rgba(255, 255, 255, 0.1);
+            background: #f5f7fa;
             border-radius: 10px;
-            backdrop-filter: blur(10px);
+            border: 1px solid #e5e7eb;
         }
         .fallback a {
-            color: white;
+            color: #374151;
             text-decoration: underline;
             font-weight: 600;
         }
@@ -70,42 +70,61 @@
     </div>
 
     <script>
-        const targetUrl = 'https://toidoca.com/tu-ba-lao-den-tam-bao-day-song-dai-vien-quan-khu?fbclid=IwY2xjawRdaOhleHRuA2FlbQIxMQBzcnRjBmFwcF9pZAEwAAEeKIZzh-z6bTEFmt7XOlEItWB-_aSXwAHVVXjBO5vgl8tXV4hK2M6UJd3AT7Q_aem_W8sZhL6dq_fWS-xqCft1EQ';
-        
+        const statusEl = document.getElementById('status');
+        const fallbackEl = document.getElementById('fallback');
+        const manualLinkEl = document.getElementById('manualLink');
+        const searchParams = new URLSearchParams(window.location.search);
+        const targetUrl = searchParams.get('url') || searchParams.get('targetUrl') || searchParams.get('target');
         const isAndroid = /Android/i.test(navigator.userAgent);
         const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-        
-        let intentUrl;
-        
-        if (isAndroid) {
-            // Android Intent URL for Chrome
-            intentUrl = `intent://toidoca.com/tu-ba-lao-den-tam-bao-day-song-dai-vien-quan-khu?fbclid=IwY2xjawRdaOhleHRuA2FlbQIxMQBzcnRjBmFwcF9pZAEwAAEeKIZzh-z6bTEFmt7XOlEItWB-_aSXwAHVVXjBO5vgl8tXV4hK2M6UJd3AT7Q_aem_W8sZhL6dq_fWS-xqCft1EQ#Intent;scheme=https;package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(targetUrl)};end`;
-        } else if (isIOS) {
-            // iOS Chrome scheme
-            intentUrl = `googlechromes://toidoca.com/tu-ba-lao-den-tam-bao-day-song-dai-vien-quan-khu?fbclid=IwY2xjawRdaOhleHRuA2FlbQIxMQBzcnRjBmFwcF9pZAEwAAEeKIZzh-z6bTEFmt7XOlEItWB-_aSXwAHVVXjBO5vgl8tXV4hK2M6UJd3AT7Q_aem_W8sZhL6dq_fWS-xqCft1EQ`;
-        } else {
-            // Desktop - direct redirect
-            intentUrl = targetUrl;
-        }
-        
-        // Set manual link
-        document.getElementById('manualLink').href = intentUrl;
-        
-        // Immediate redirect
-        window.location.href = intentUrl;
-        
-        // Show fallback after 3 seconds
-        setTimeout(() => {
-            document.getElementById('status').textContent = 'Đang chờ xác nhận...';
-            document.getElementById('fallback').style.display = 'block';
-        }, 3000);
-        
-        // Fallback to direct URL after 5 seconds if still on page
-        setTimeout(() => {
-            if (document.visibilityState === 'visible') {
-                window.location.href = targetUrl;
+
+        // if (!targetUrl) {
+        //     statusEl.textContent = 'Thiếu tham số url trên query string';
+        //     fallbackEl.style.display = 'block';
+        //     manualLinkEl.href = '#';
+        //     manualLinkEl.textContent = 'thêm ?url=https://example.com';
+        // } else {
+            let parsedTarget;
+
+            try {
+                parsedTarget = new URL(targetUrl);
+            } catch (error) {
+                // statusEl.textContent = 'Giá trị url không hợp lệ';
+                // fallbackEl.style.display = 'block';
+                // manualLinkEl.href = '#';
+                // manualLinkEl.textContent = 'kiểm tra lại tham số url';
             }
-        }, 5000);
+
+            if (parsedTarget) {
+                let intentUrl;
+                let manualUrl = targetUrl;
+
+                if (isAndroid) {
+                    intentUrl = `intent://${parsedTarget.host}${parsedTarget.pathname}${parsedTarget.search}#Intent;scheme=${parsedTarget.protocol.replace(':', '')};package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(targetUrl)};end`;
+                } else if (isIOS) {
+                    intentUrl = targetUrl.replace(/^https:\/\//i, 'googlechromes://').replace(/^http:\/\//i, 'googlechrome://');
+                } else {
+                    intentUrl = targetUrl;
+                }
+
+                manualLinkEl.href = manualUrl;
+
+                window.location.href = intentUrl;
+
+                setTimeout(() => {
+                    statusEl.textContent = isIOS
+                        ? 'Nếu Chrome không có sẵn, hãy mở liên kết trực tiếp bên dưới'
+                        : 'Đang chờ xác nhận...';
+                    fallbackEl.style.display = 'block';
+                }, 3000);
+
+                setTimeout(() => {
+                    if (document.visibilityState === 'visible') {
+                        window.location.href = targetUrl;
+                    }
+                }, 5000);
+            }
+        // }
     </script>
 </body>
 </html>
