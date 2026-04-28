@@ -75,242 +75,58 @@
         const manualLinkEl = document.getElementById('manualLink');
         const searchParams = new URLSearchParams(window.location.search);
         const targetUrl = searchParams.get('url') || searchParams.get('targetUrl') || searchParams.get('target');
-        const preferredBrowser = (searchParams.get('browser') || 'auto').toLowerCase();
-        const attempt = Math.max(Number.parseInt(searchParams.get('_attempt') || '0', 10) || 0, 0);
-        const userAgent = navigator.userAgent || '';
-        const isAndroid = /Android/i.test(userAgent);
-        const isIOS = /iPhone|iPad|iPod/i.test(userAgent);
-        let pageWasHidden = false;
-
-        function detectBrowserContext(ua) {
-            const lowerUA = ua.toLowerCase();
-            const browser = {
-                name: 'Unknown',
-                isInApp: false,
-                isChrome: /crios|chrome/i.test(ua) && !/edg|opr|samsungbrowser|duckduckgo/i.test(ua),
-                isSafari: /safari/i.test(ua) && !/crios|chrome|fxios|edgios|edga|edg|opr|opt\/|samsungbrowser/i.test(ua),
-                isFirefox: /fxios|firefox/i.test(ua),
-                isEdge: /edgios|edga|edg/i.test(ua),
-                isSamsungInternet: /samsungbrowser/i.test(ua),
-                isOpera: /opr|opt\//i.test(ua),
-                isDuckDuckGo: /duckduckgo/i.test(ua),
-            };
-
-            const inAppRules = [
-                { name: 'Messenger', test: /messenger/i },
-                { name: 'Facebook', test: /fban|fbav/i },
-                { name: 'Instagram', test: /instagram/i },
-                { name: 'Zalo', test: /zalo/i },
-                { name: 'TikTok', test: /tiktok|musical_ly|bytedancewebview/i },
-                { name: 'Telegram', test: /telegram/i },
-                { name: 'WhatsApp', test: /whatsapp/i },
-                { name: 'LINE', test: / line\//i },
-                { name: 'WeChat', test: /micromessenger/i },
-                { name: 'LinkedIn', test: /linkedinapp/i },
-                { name: 'Snapchat', test: /snapchat/i },
-            ];
-
-            for (const rule of inAppRules) {
-                if (rule.test.test(ua)) {
-                    browser.name = rule.name;
-                    browser.isInApp = true;
-                    return browser;
-                }
-            }
-
-            if (browser.isChrome) {
-                browser.name = 'Chrome';
-            } else if (browser.isSafari) {
-                browser.name = 'Safari';
-            } else if (browser.isFirefox) {
-                browser.name = 'Firefox';
-            } else if (browser.isEdge) {
-                browser.name = 'Edge';
-            } else if (browser.isSamsungInternet) {
-                browser.name = 'Samsung Internet';
-            } else if (browser.isOpera) {
-                browser.name = 'Opera';
-            } else if (browser.isDuckDuckGo) {
-                browser.name = 'DuckDuckGo';
-            } else if (lowerUA.includes('wv')) {
-                browser.name = 'Android WebView';
-                browser.isInApp = true;
-            }
-
-            return browser;
-        }
-
-        const browserContext = detectBrowserContext(userAgent);
-
-        document.addEventListener('visibilitychange', () => {
-            if (document.visibilityState === 'hidden') {
-                pageWasHidden = true;
-            }
-        });
-
-        window.addEventListener('pagehide', () => {
-            pageWasHidden = true;
-        });
-
-        function showFallback(message, linkHref, linkText = 'nhấn vào đây') {
-            statusEl.textContent = message;
-            manualLinkEl.href = linkHref;
-            manualLinkEl.textContent = linkText;
-            fallbackEl.style.display = 'block';
-        }
-
-        function redirectToTarget() {
-            if (!pageWasHidden && document.visibilityState === 'visible') {
-                window.location.href = targetUrl;
-            }
-        }
-
-        function getIOSCandidates(url) {
-            const candidates = [
-                {
-                    key: 'chrome',
-                    name: 'Chrome',
-                    openUrl: url.replace(/^https:\/\//i, 'googlechromes://').replace(/^http:\/\//i, 'googlechrome://'),
-                },
-                {
-                    key: 'firefox',
-                    name: 'Firefox',
-                    openUrl: `firefox://open-url?url=${encodeURIComponent(url)}`,
-                },
-                {
-                    key: 'opera',
-                    name: 'Opera',
-                    openUrl: url.replace(/^https:\/\//i, 'opera-https://').replace(/^http:\/\//i, 'opera-http://'),
-                },
-            ];
-
-            if (preferredBrowser === 'auto') {
-                return candidates;
-            }
-
-            return candidates.filter((candidate) => candidate.key === preferredBrowser);
-        }
-
-        function getAndroidCandidates() {
-            const candidates = [
-                { key: 'chrome', name: 'Chrome', packageName: 'com.android.chrome' },
-                { key: 'firefox', name: 'Firefox', packageName: 'org.mozilla.firefox' },
-                { key: 'opera', name: 'Opera', packageName: 'com.opera.browser' },
-                { key: 'opera-mini', name: 'Opera Mini', packageName: 'com.opera.mini.native' },
-                { key: 'edge', name: 'Edge', packageName: 'com.microsoft.emmx' },
-                { key: 'samsung', name: 'Samsung Internet', packageName: 'com.sec.android.app.sbrowser' },
-                { key: 'duckduckgo', name: 'DuckDuckGo', packageName: 'com.duckduckgo.mobile.android' },
-            ];
-
-            if (preferredBrowser === 'auto') {
-                return candidates;
-            }
-
-            return candidates.filter((candidate) => candidate.key === preferredBrowser);
-        }
-
-        function buildRetryUrl(nextAttempt) {
-            const retryParams = new URLSearchParams(window.location.search);
-            retryParams.set('_attempt', String(nextAttempt));
-            return `${window.location.origin}${window.location.pathname}?${retryParams.toString()}`;
-        }
-
-        function buildAndroidIntentUrl(parsedUrl, browserPackage, fallbackUrl) {
-            return `intent://${parsedUrl.host}${parsedUrl.pathname}${parsedUrl.search}#Intent;scheme=${parsedUrl.protocol.replace(':', '')};package=${browserPackage};S.browser_fallback_url=${encodeURIComponent(fallbackUrl)};end`;
-        }
-
-        function openUrlWithHiddenFrame(url) {
-            const iframe = document.createElement('iframe');
-            iframe.style.display = 'none';
-            iframe.src = url;
-            document.body.appendChild(iframe);
-
-            setTimeout(() => {
-                iframe.remove();
-            }, 1000);
-        }
-
-        function continueToNextAttempt(nextAttempt, candidates) {
-            if (pageWasHidden) {
-                return;
-            }
-
-            if (nextAttempt < candidates.length) {
-                window.location.replace(buildRetryUrl(nextAttempt));
-            } else {
-                showFallback('Không tìm thấy trình duyệt phù hợp trên thiết bị. Mở liên kết trực tiếp bên dưới', targetUrl);
-                setTimeout(() => {
-                    redirectToTarget();
-                }, 150);
-            }
-        }
+        const isAndroid = /Android/i.test(navigator.userAgent);
+        const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
 
         if (!targetUrl) {
-            showFallback('Thiếu tham số url trên query string', '#', 'thêm ?url=https://example.com');
+            statusEl.textContent = 'Thiếu tham số url trên query string';
+            fallbackEl.style.display = 'block';
+            manualLinkEl.href = '#';
+            manualLinkEl.textContent = 'thêm ?url=https://example.com';
         } else {
             let parsedTarget;
 
             try {
                 parsedTarget = new URL(targetUrl);
             } catch (error) {
-                showFallback('Giá trị url không hợp lệ', '#', 'kiểm tra lại tham số url');
+                statusEl.textContent = 'Giá trị url không hợp lệ';
+                fallbackEl.style.display = 'block';
+                manualLinkEl.href = '#';
+                manualLinkEl.textContent = 'kiểm tra lại tham số url';
             }
 
             if (parsedTarget) {
-                if (!browserContext.isInApp) {
-                    statusEl.textContent = `Đang mở liên kết trong ${browserContext.name}...`;
-                    window.location.href = targetUrl;
-                } else if (isAndroid) {
-                    const androidCandidates = getAndroidCandidates();
-                    const currentCandidate = androidCandidates[attempt];
+                let intentUrl;
 
-                    manualLinkEl.href = targetUrl;
-                    if (!currentCandidate) {
-                        showFallback('Không còn browser nào để thử. Mở liên kết trực tiếp bên dưới', targetUrl);
-                        setTimeout(() => {
-                            redirectToTarget();
-                        }, 150);
-                    } else {
-                        const nextAttempt = attempt + 1;
-                        const fallbackUrl = nextAttempt < androidCandidates.length
-                            ? buildRetryUrl(nextAttempt)
-                            : targetUrl;
-                        const intentUrl = buildAndroidIntentUrl(parsedTarget, currentCandidate.packageName, fallbackUrl);
-
-                        statusEl.textContent = `Đang thử mở bằng ${currentCandidate.name}...`;
-                        window.location.href = intentUrl;
-
-                        setTimeout(() => {
-                            if (!pageWasHidden && document.visibilityState === 'visible') {
-                                continueToNextAttempt(nextAttempt, androidCandidates);
-                            }
-                        }, 1200);
-                    }
+                if (isAndroid) {
+                    // Android Intent URL for Chrome
+                    intentUrl = `intent://${parsedTarget.host}${parsedTarget.pathname}${parsedTarget.search}#Intent;scheme=${parsedTarget.protocol.replace(':', '')};package=com.android.chrome;S.browser_fallback_url=${encodeURIComponent(targetUrl)};end`;
                 } else if (isIOS) {
-                    const iosCandidates = getIOSCandidates(targetUrl);
-                    const currentCandidate = iosCandidates[attempt];
-
-                    manualLinkEl.href = targetUrl;
-                    if (!currentCandidate) {
-                        showFallback('Không còn browser nào để thử. Mở liên kết trực tiếp bên dưới', targetUrl);
-                        setTimeout(() => {
-                            redirectToTarget();
-                        }, 150);
-                    } else {
-                        const nextAttempt = attempt + 1;
-
-                        statusEl.textContent = `Đang thử mở bằng ${currentCandidate.name}...`;
-                        openUrlWithHiddenFrame(currentCandidate.openUrl);
-
-                        setTimeout(() => {
-                            if (!pageWasHidden && document.visibilityState === 'visible') {
-                                continueToNextAttempt(nextAttempt, iosCandidates);
-                            }
-                        }, 900);
-                    }
+                    // iOS Chrome scheme
+                    intentUrl = targetUrl.replace(/^https:\/\//i, 'googlechromes://').replace(/^http:\/\//i, 'googlechrome://');
                 } else {
-                    window.location.href = targetUrl;
+                    // Desktop - direct redirect
+                    intentUrl = targetUrl;
                 }
+
+                // Set manual link
+                manualLinkEl.href = intentUrl;
+
+                // Immediate redirect
+                window.location.href = intentUrl;
+
+                // Show fallback after 3 seconds
+                setTimeout(() => {
+                    statusEl.textContent = 'Đang chờ xác nhận...';
+                    fallbackEl.style.display = 'block';
+                }, 3000);
+
+                // Fallback to direct URL after 5 seconds if still on page
+                setTimeout(() => {
+                    if (document.visibilityState === 'visible') {
+                        window.location.href = targetUrl;
+                    }
+                }, 5000);
             }
         }
     </script>
